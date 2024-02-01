@@ -1,0 +1,19 @@
+{
+    "type_name":"普通消耗品",
+    "id_strat":"100",
+    "data":{
+        "100_1":{
+            "name":"小型血瓶",
+            "buff":{
+                "hp":20
+
+            },
+            "debuff":{
+
+            },
+            "is_overlay":1,
+            "abs_id":0
+        }
+
+    }
+}

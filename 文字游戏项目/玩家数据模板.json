@@ -1,0 +1,22 @@
+{
+    "playdata":{
+        "lv":1,
+        "name":"测试",
+        "hp":300,
+        "mp":100,
+        "exp_next":100,
+        "exp":0,
+        "dex":10,
+        "def":15,
+        "atk":20
+
+    },
+    "systemdata":
+    {
+        "group_id":"",
+        "ban":0,
+        "gag":0,
+        "PL":1
+
+    }
+}
