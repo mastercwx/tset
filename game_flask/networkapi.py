@@ -1,0 +1,122 @@
+from flask import Flask, request
+from game_class import Normal
+from use import Player
+
+
+app = Flask(__name__)
+
+# game_json = {}
+game_obj={}
+@app.route('/add_game', methods=['GET'])
+def add_game():
+    room_id = str(request.args.get('room_id'))
+    player_id = str(request.args.get('player_id'))
+    msg=''
+    if not game_obj.get(room_id):
+        msg+="房间未创建"
+    else:
+        obj:Normal=game_obj.get(room_id)
+        msg=obj.add_game(player_id)
+    return msg
+
+
+@app.route('/init_game', methods=['GET'])
+def init_game():
+    room_id = str(request.args.get('room_id'))
+    player_id = str(request.args.get('player_id'))
+    msg=''
+    if game_obj.get(room_id):
+        msg+=f'本群已创建房间'
+    else:
+        game_obj[room_id]=Normal()
+        obj:Normal=game_obj[room_id]
+        obj.game_player_list.append(player_id)
+        msg+="房间创建成功"
+    return msg
+
+@app.route('/start_game', methods=['GET'])
+def start_game():
+    room_id = str(request.args.get('room_id'))
+    player_id = str(request.args.get('player_id'))
+    msg=''
+    if game_obj.get(room_id):
+        obj:Normal=game_obj.get(room_id)
+        msg+=obj.start_game(player_id)     
+    else:
+        msg+="房间未被创建"
+    return msg
+        
+@app.route('/shoot_game', methods=['GET'])
+def shoot_game():
+    room_id = str(request.args.get('room_id'))
+    player_id = str(request.args.get('player_id'))
+    id_=str(request.args.get('id'))
+    msg=''
+    if game_obj.get(room_id):
+        obj:Normal=game_obj.get(room_id)
+        msg+=obj.shoot_game(player_id,id_)
+    else:
+        msg+="房间未被创建"
+    return msg
+
+@app.route('/use_game', methods=['GET'])
+def use_game():
+    room_id = str(request.args.get('room_id'))
+    player_id = str(request.args.get('player_id'))
+    id_=str(request.args.get('id'))
+    msg=''
+    if game_obj.get(room_id):
+        obj:Normal=game_obj.get(room_id)
+        msg+=obj.use_game(player_id,id_)
+
+    else:
+        msg+="房间未被创建"
+    return msg
+
+
+@app.route('/look_game', methods=['GET'])
+def look_game():
+    room_id = str(request.args.get('room_id'))
+    player_id = str(request.args.get('player_id'))
+    msg=''
+    if game_obj.get(room_id):
+        obj:Normal=game_obj.get(room_id)
+        msg+=obj.look_res(player_id)
+    else:
+        msg+="房间未被创建"
+    return msg
+    
+@app.route('/look_data_game', methods=['GET'])
+def look_data_game():
+    
+    player_id = str(request.args.get('player_id'))
+    msg=''
+    p=Player(player_id)
+    r={
+        "gold":"金币",
+        "win":"胜场",
+        "loss":"败场",
+         "total":"总场次"}
+    msg+=f'玩家({p.id})信息\n'
+    for i,j in p.data.items():
+        msg+=f'{r[i]}:{j}\n'
+    return msg
+    
+@app.route('/commond_game', methods=['GET'])
+def commond_game_game():
+    msg='恶魔轮盘赌规则:\n'
+    msg+='对自己开空枪可以再开一枪\n'
+    msg+='对方如果被锁住,下次锁对方最少得使动一回合'
+    msg+='谁先将⚡掉到0及以下便失败'
+    msg+='游戏指令:\n'
+    msg+='[0-1]指可选0或1,以下均用[]代替\n'
+    msg+='射击[0-1] 0->自己,1->对手\n'
+    msg+='使用[1-5]\n'
+    msg+='查看物品\n'
+    msg+='我的信息\n'
+    msg+='例如:\n'
+    msg+='射击1  使用5'
+    return msg
+
+if __name__ == '__main__':
+    app.run()

@@ -1,0 +1,267 @@
+from use import Game
+
+class Normal:
+    """
+    普通轮盘赌模式类
+
+    属性:
+    game_player_list(list):对战玩家列表
+    obj(Game):游戏底层逻辑类
+    res(dict):道具对照表
+    """
+    def __init__(self) -> None:
+        self.game_player_list=[]
+        self.obj:Game=None
+        self.run=False
+        self.res={"1":"🔪",
+                "2":"🚬",
+                "3":"🔎",
+                "4":"⛓️",
+                "5":"🍺"}
+    def in_room(self,player_id)->bool:
+        """
+        获取玩家是否在房间
+
+        返回值:
+        bool:True(在)/False(不在)
+        
+        """
+        return player_id in self.game_player_list 
+    
+    def add_game(self,player_id)->str:
+        """
+        加入对战房间
+
+        参数:
+        player_id(str):进入房间玩家id
+
+
+        返回值:
+        str:执行代码状态
+        """
+        msg=''
+        if len(self.game_player_list) < 2 and not self.in_room(player_id):
+            self.game_player_list.append(player_id)
+            msg+=f'({player_id})加入房间成功!'
+            return msg
+        else:
+            msg+=f'({player_id})已在房间!'
+            return msg
+
+    def start_game(self,player_id):
+        """
+        启动游戏
+
+        参数:
+        player_id(str):发起开始游戏玩家
+        
+        返回值:
+        str:执行代码状态
+        """
+        msg=''
+        if self.run and player_id in self.game_player_list:
+            msg+='游戏正在进行中...'
+            return msg
+        else:
+            if len(self.game_player_list)==2:
+                self.run=True
+                self.obj=Game(*self.game_player_list)
+                self.obj.game_init()
+                z,j=self.obj.generate_random_clip_init()
+                msg+=f"当前弹夹情况\n实:{z}\n空:{j}\n[{self.obj.ammo.id}]的回合"
+                return msg
+
+            else:
+                msg+="人数不够无法开始游戏"
+                return msg
+            
+    def shoot_game(self,player_id,id_):
+        """
+        开枪
+
+        参数:
+        player_id(str):攻击玩家id
+        id_(str):对象选择id(0为自己,1为对方)
+
+        返回值:
+        str:执行代码状态
+        """
+        msg=''
+        if not self.in_room(player_id):
+            msg+='您不在本局游戏'
+            return msg
+        if not self.obj.ammo.sx["pass"]:
+            self.obj.ammo.sx["pass"]=True
+            self.obj.ammo=self.obj.rival()
+        if self.obj.ammo.id==player_id:
+            if id_ not in ['1','0']:
+                msg+="对象错误"
+                return msg
+            gj=self.obj.ammo
+            bgj=gj if id_=="0" else self.obj.rival()
+            tag,atk_num=self.obj.shoot(gj,bgj)
+            msg=''
+            if tag==0:
+                msg+=f"你对自己({gj.id})开出真枪造成{atk_num}点伤害\n"
+            elif tag==1:
+                msg+=f"你({gj.id})开出真枪对玩家({bgj.id})造成{atk_num}点伤害\n"
+            elif tag==2:
+                msg+=f"你({gj.id})对自己开出空枪,延续一回合\n"
+            elif tag==3:
+                msg+=f"你({gj.id})对玩家({bgj.id})开出空枪\n"
+            
+            win=False
+            if self.obj.player1.sx["hp"]<=0 or self.obj.player2.sx["hp"]<=0:
+                
+                msg+="\n\n\n<游戏结束>\n\n"
+                if self.obj.player1.sx["hp"]>=1:
+                    msg+=f">>>{self.obj.player1.id}胜利<<<"
+                    self.obj.player1.data["gold"]+=300
+                    self.obj.player1.data["win"]+=1
+                    self.obj.player1.data["total"]+=1
+                    self.obj.player1.save()
+                    #self.obj.player2.data["gold"]+=300
+                    self.obj.player2.data["loss"]+=1
+                    self.obj.player2.data["total"]+=1
+                    self.obj.player2.save()
+                else:
+                    msg+=f">>>{self.obj.player2.id}胜利<<<"
+                    self.obj.player2.data["gold"]+=300
+                    self.obj.player2.data["win"]+=1
+                    self.obj.player2.data["total"]+=1
+                    self.obj.player2.save()
+                   # self.obj.player1.data["gold"]+=300
+                    self.obj.player1.data["loss"]+=1
+                    self.obj.player1.data["total"]+=1
+                    self.obj.player1.save()
+                msg+="\n奖金300"
+                self.game_player_list=[]
+                self.obj:Game=None
+                self.run=False
+                return msg
+            if not win:
+                if self.obj.gone_atk==2:
+                    self.obj.gone_atk=1
+                    msg+="\n[枪的伤害重置了]\n"
+                if len(self.obj.ammo_list)==0:
+                    z,j=self.obj.generate_random_clip_init()
+                    w=self.obj.get_res()
+                    
+                    msg+=f"\n子弹已射完重新生成弹夹:\n实:{z}\n空:{j}\n双方获得物品:\n{self.obj.player1.id}\n{[self.res[i] for i in w[self.obj.player1.id]]}\n{self.obj.player2.id}\n{[self.res[i] for i in w[self.obj.player2.id]]}\n\n当前是[{self.obj.ammo.id}]回合"
+
+        else:
+            msg+="不是您的回合"
+        return msg
+    def use_game(self,player_id,id_):
+        """
+        使用道具
+
+        参数:
+        player_id(str):使用道具玩家
+        id_(str):道具id
+
+        返回值:
+        str:执行代码状态
+        """
+        msg=''
+        if not self.in_room(player_id):
+            msg+='您不在本局游戏'
+            return msg
+        sk_tag=0
+        if not self.obj.ammo.sx["pass"]:
+                sk_tag=1
+                self.obj.ammo.sx["pass"]=True
+                self.obj.ammo=self.obj.rival()
+        cmd=id_
+        
+        game=self.obj
+        if self.obj.ammo.id==player_id:
+            
+            if cmd=='1':
+                if game.ammo.sx["res"][cmd]>0 and game.gone_atk==1:
+                    msg+="枪的伤害加1"
+                    game.ammo.sx["res"][cmd]-=1
+                    game.gone_atk+=1
+                else:
+                    msg+=f"{self.res[cmd]}数量不足或者已使用:当前枪的伤害:{game.gone_atk}"
+            elif cmd=='2':
+                if game.ammo.sx["res"][cmd]>0:
+                    game.ammo.sx["hp"]+=1
+                    msg+=f"你({game.ammo.id})的血量+1,当前血量:{game.ammo.sx['hp']}"
+                    
+                    game.ammo.sx["res"][cmd]-=1
+                else:
+                    msg+=f"{self.res[cmd]}数量不足"
+            elif cmd=='3':
+                if game.ammo.sx["res"][cmd]>0:
+                    msg+=f"当前子弹为[{'实弹' if game.ammo_list[-1] else '空弹'}]"
+                    game.ammo.sx["res"][cmd]-=1
+                else:
+                    msg+=f"{self.res[cmd]}数量不足"
+            elif cmd=='4':
+                
+                if game.ammo.sx["res"][cmd]>0:
+                    
+                    if not game.rival().sx["pass"] or sk_tag:
+                        msg+=f"对方({ game.rival().id})已被控制无需再次使用"
+                    else:
+                        msg+=f"对方({ game.rival().id})已被控制对方下回合无法行动"
+                        game.rival().sx["pass"]=False
+                        game.ammo.sx["res"][cmd]-=1
+                else:
+                    print(f"{self.res[cmd]}数量不足")
+            elif cmd=='5':
+                if game.ammo.sx["res"][cmd]>0:
+                    msg+=f"退出的子弹为[{'实弹' if game.ammo_list.pop() else '空弹'}]"
+                    game.ammo.sx["res"][cmd]-=1
+                    if len(game.ammo_list)==0:
+                        z,j=self.obj.generate_random_clip_init()
+                        msg+=f"\n子弹已退完重新生成弹夹:\n实:{z}\n空:{j}\n当前是[{game.ammo.id}]回合"
+                    
+                else:
+                    msg+=f"{self.res[cmd]}数量不足"
+        
+            else:
+                msg+="物品不存在"
+            return msg
+        else:
+            msg+="不是您的回合"
+            return msg
+        
+    def look_res(self,player_id):
+        """
+        查看物品
+
+        参数:
+        player_id(str):查看物品玩家id
+ 
+        返回值:
+        str:执行代码状态
+        """
+        if not self.in_room(player_id):
+            msg+='您不在本局游戏'
+            return msg
+        msg="双方物品情况\n"
+        msg+='🔪(id:1):[当前回合伤害+1]\n'
+        msg+='🚬(id:2):[回复一格⚡]\n'
+        msg+='🔎(id:3):[查看当前子弹]\n'
+        msg+='⛓️(id:4):[限制对方一回合]\n'
+        msg+='🍺(id:5):[退出枪里当前子弹]\n'
+        r={
+            "1":"🔪\t数量:{}",
+            "2":"🚬\t数量:{}",
+            "3":"🔎\t数量:{}",
+            "4":"⛓️\t数量:{}",
+            "5":"🍺\t数量:{}"
+        }
+        msg+=f'{self.obj.player1.id}[⚡x{self.obj.player1.sx["hp"]}]\n'
+        for i,j in self.obj.player1.sx["res"].items():
+            msg+="{}\n".format(r[i].format(j))
+        msg+=f'\n\n{self.obj.player2.id}[⚡x{self.obj.player2.sx["hp"]}]\n'
+        for i,j in self.obj.player2.sx["res"].items():
+            msg+="{}\n".format(r[i].format(j))
+        msg+="弹夹情况:"
+        true_ammo = self.obj.ammo_list.count(1)
+        false_ammo = self.obj.ammo_list.count(0)
+        msg+=f"[实:{true_ammo}] [空:{false_ammo}]"
+        return msg
